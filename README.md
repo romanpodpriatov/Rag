@@ -2,6 +2,45 @@
 
 This project implements an advanced Retrieval-Augmented Generation (RAG) system using exclusively local Qwen models, designed for offline operation.
 
+## mermaid 
+
+flowchart LR
+  %% ============ INGESTION ============
+  subgraph I[Ингест: подготовка корпуса]
+    A[Сырой корпус\n(data/codebase_chunks.json)] --> B[Чанкинг\n(заголовки + скользящее окно)]
+    B --> C[Contextual Embeddings: \n"Situating context"\nQwen3-0.6B]
+    C --> Ccache[(Кэш контекстов)]
+    C --> D[Склейка: original + context]
+
+    D --> E[Эмбеддинги\nQwen3-Embedding-0.6B\n(normalize / optional PCA)]
+    E --> Ecache[(Кэш эмбеддингов)]
+    E --> F[(FAISS Index)]
+
+    D --> G[tokenize]
+    G --> H[(BM25 Index\ncontent + contextualized_content)]
+  end
+
+  %% ============ QUERY ============
+  subgraph Q[Запрос: поиск и ответ]
+    Q0[User Query] --> Q1[Нормализация/токенизация]
+    Q1 --> S[Семантический поиск\nFAISS → Top N_sem]
+    Q1 --> K[Keyword поиск\nBM25 → Top N_bm25]
+
+    S --> RRF[RRF-слияние\nw_sem/w_bm25 • pool N]
+    K --> RRF
+
+    RRF --> CE[Cross-Encoder Re-rank\nQwen3-Reranker-0.6B\n(batch)]
+    CE --> Rcache[(Кэш реранк-скоров)]
+    CE --> TK[Top-K финальные чанки]
+
+    TK --> GEN[Answer Synthesis\nQwen3-0.6B\n(строгий промпт + CITATIONS)]
+    GEN --> OUT[Ответ + блок CITATIONS]
+  end
+
+  %% ============ EVAL ============
+  TK -. opc .-> EV[Оценка (scripts/evaluate.py)\nPass@5/10/20 по golden chunks]
+
+
 ## Features
 
 - **Offline Mode**: Supports `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, and `local_files_only=True` for model loading.
