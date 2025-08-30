@@ -4,42 +4,39 @@ This project implements an advanced Retrieval-Augmented Generation (RAG) system 
 
 ## mermaid 
 
-flowchart LR
-  %% ============ INGESTION ============
-  subgraph I[Ингест: подготовка корпуса]
-    A[Сырой корпус\n(data/codebase_chunks.json)] --> B[Чанкинг\n(заголовки + скользящее окно)]
-    B --> C[Contextual Embeddings: \n"Situating context"\nQwen3-0.6B]
-    C --> Ccache[(Кэш контекстов)]
-    C --> D[Склейка: original + context]
+[Корпус] --> [Чанкинг] --> [Situating context (Qwen3-0.6B)]
+                                |--> [КЭШ контекстов]
+                └─(склейка original+context)─┐
+                                            v
+                                 [Эмбеддинг (Qwen3-Embedding-0.6B)]
+                                            |--> [КЭШ эмбеддингов]
+                                            v
+                                      (FAISS INDEX)
+                        └───────────────┐
+[склейка original+context] --tokenize--> (BM25 INDEX по двум полям)
 
-    D --> E[Эмбеддинги\nQwen3-Embedding-0.6B\n(normalize / optional PCA)]
-    E --> Ecache[(Кэш эмбеддингов)]
-    E --> F[(FAISS Index)]
+====================  ОНЛАЙН-ЗАПРОС  ====================
 
-    D --> G[tokenize]
-    G --> H[(BM25 Index\ncontent + contextualized_content)]
-  end
+[User Query] -> [нормализовать]
+         |--> [FAISS Top N_sem]
+         |--> [BM25  Top N_bm25]
+                 \            /
+                  \          /
+                   [RRF: fusion (w_sem,w_bm25) → pool N]
+                               |
+                               v
+                [Re-rank (Qwen3-Reranker-0.6B, batch)]
+                               |--> [КЭШ реранк-скоров]
+                               v
+                         [Top-K чанков]
+                               |
+                               v
+     [Qwen3-0.6B: генерация ответа + строгие CITATIONS]
+                               |
+                               v
+                      [Ответ пользователю]
 
-  %% ============ QUERY ============
-  subgraph Q[Запрос: поиск и ответ]
-    Q0[User Query] --> Q1[Нормализация/токенизация]
-    Q1 --> S[Семантический поиск\nFAISS → Top N_sem]
-    Q1 --> K[Keyword поиск\nBM25 → Top N_bm25]
-
-    S --> RRF[RRF-слияние\nw_sem/w_bm25 • pool N]
-    K --> RRF
-
-    RRF --> CE[Cross-Encoder Re-rank\nQwen3-Reranker-0.6B\n(batch)]
-    CE --> Rcache[(Кэш реранк-скоров)]
-    CE --> TK[Top-K финальные чанки]
-
-    TK --> GEN[Answer Synthesis\nQwen3-0.6B\n(строгий промпт + CITATIONS)]
-    GEN --> OUT[Ответ + блок CITATIONS]
-  end
-
-  %% ============ EVAL ============
-  TK -. opc .-> EV[Оценка (scripts/evaluate.py)\nPass@5/10/20 по golden chunks]
-
+(Оценка: scripts/evaluate.py считает Pass@5/10/20)
 
 ## Features
 
