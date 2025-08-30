@@ -2,42 +2,6 @@
 
 This project implements an advanced Retrieval-Augmented Generation (RAG) system using exclusively local Qwen models, designed for offline operation.
 
-## mermaid 
-
-[Корпус] --> [Чанкинг] --> [Situating context (Qwen3-0.6B)]
-                                |--> [КЭШ контекстов]
-                └─(склейка original+context)─┐
-                                            v
-                                 [Эмбеддинг (Qwen3-Embedding-0.6B)]
-                                            |--> [КЭШ эмбеддингов]
-                                            v
-                                      (FAISS INDEX)
-                        └───────────────┐
-[склейка original+context] --tokenize--> (BM25 INDEX по двум полям)
-
-====================  ОНЛАЙН-ЗАПРОС  ====================
-
-[User Query] -> [нормализовать]
-         |--> [FAISS Top N_sem]
-         |--> [BM25  Top N_bm25]
-                 \            /
-                  \          /
-                   [RRF: fusion (w_sem,w_bm25) → pool N]
-                               |
-                               v
-                [Re-rank (Qwen3-Reranker-0.6B, batch)]
-                               |--> [КЭШ реранк-скоров]
-                               v
-                         [Top-K чанков]
-                               |
-                               v
-     [Qwen3-0.6B: генерация ответа + строгие CITATIONS]
-                               |
-                               v
-                      [Ответ пользователю]
-
-(Оценка: scripts/evaluate.py считает Pass@5/10/20)
-
 ## Features
 
 - **Offline Mode**: Supports `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, and `local_files_only=True` for model loading.
