@@ -1,0 +1,16 @@
+models:
+  embed: "Qwen/Qwen3-Embedding-0.6B"
+  reranker: "Qwen/Qwen3-Reranker-0.6B"
+  generator: "Qwen/Qwen3-0.6B"
+  local_files_only: true
+  trust_remote_code: true
+context_window_tokens: 4096
+chunk_size_chars: 1200
+chunk_overlap_chars: 200
+rrf: { w_sem: 0.8, w_bm25: 0.2, k_sem: 60, k_bm25: 60, pool: 150 }
+rerank: { batch_size: 1, top_k: 10 } # Changed batch_size to 1
+faiss: { use_pca: false, pca_dim: 384, metric: "cosine" }
+quantization: { bnb_4bit: true }
+generation: { temperature: 0.2, top_p: 0.9, max_new_tokens: 512 }
+offline: { hf_hub_offline: true, transformers_offline: true }
+cache_dir: "./cache"

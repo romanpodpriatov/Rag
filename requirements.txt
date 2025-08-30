@@ -1,0 +1,12 @@
+transformers
+accelerate
+torch
+faiss-cpu
+rank-bm25
+numpy
+pandas
+tqdm
+pyyaml
+orjson
+scikit-learn
+bitsandbytes # Optional, but included as per description
